@@ -7,6 +7,8 @@
 #
 
 require 'osx/cocoa'
+require 'rubygems'
+require 'growl'
 include OSX
 OSX.require_framework 'ScriptingBridge'
 
@@ -15,8 +17,10 @@ class App < NSObject
 	@menu
 	@entourage
 	@ent_accts
+	@emailcount
 	@update_interval
-
+	@icon
+	
 	#----------------------------------------------------------------------------
 	# Method:			initialize
 	#
@@ -24,7 +28,9 @@ class App < NSObject
 	#----------------------------------------------------------------------------
 	def initialize()
 		@entourage = SBApplication.applicationWithBundleIdentifier_("com.microsoft.Entourage")
+		@growl = SBApplication.applicationWithBundleIdentifier_("com.Growl.GrowlHelperApp")
 		@update_interval = 300.0
+		@ent_icon = NSImage.imageNamed_("ent32.png")
 		entAccounts()
 	end
 
@@ -39,7 +45,7 @@ class App < NSObject
     @status_item = statusbar.statusItemWithLength(NSVariableStatusItemLength)
 		
 		# Set status bar icon
-		@status_item.setImage(NSImage.imageNamed_("ent32.png"))
+		@status_item.setImage(@ent_icon)
 		
 		# Create menu with the mail count
 		postFirstCount()
@@ -75,6 +81,7 @@ class App < NSObject
 		inbox = @ent_accts[0].inboxFolder.get
 		@emailcount = inbox.unreadMessageCount
 		puts @emailcount
+		growlNotify
 		return @emailcount.to_s
   end
 	
@@ -158,6 +165,17 @@ class App < NSObject
 end tell"
 		NSAppleScript.alloc.initWithSource_(thescript).executeAndReturnError_(nil)
 		@entourage.activate
+	end
+
+	#----------------------------------------------------------------------------
+	# Method:			growlNotify
+	#
+	# Purpose:		
+	#----------------------------------------------------------------------------	
+	def growlNotify
+		g = Growl::Notifier.sharedInstance
+		g.register('EntMenu', ['New Mail'])
+		g.notify('New Mail', 'Unread Mail', "You have #{@emailcount} unread messages", :icon => @ent_icon)
 	end
 end
 
