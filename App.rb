@@ -38,8 +38,8 @@ class App < NSObject
     statusbar = NSStatusBar.systemStatusBar
     @status_item = statusbar.statusItemWithLength(NSVariableStatusItemLength)
 		
-    #image = NSImage.alloc.initWithContentsOfFile("Entourage_mac_2008_icon.png")
-    #status_item.setImage(image)
+		# Set status bar icon
+		@status_item.setImage(NSImage.imageNamed_("ent32.png"))
 		
 		# Create menu with the mail count
 		postFirstCount()
