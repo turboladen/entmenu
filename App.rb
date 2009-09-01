@@ -29,7 +29,7 @@ class App < NSObject
 	def initialize()
 		@entourage = SBApplication.applicationWithBundleIdentifier_("com.microsoft.Entourage")
 		@growl = SBApplication.applicationWithBundleIdentifier_("com.Growl.GrowlHelperApp")
-		@update_interval = 300.0
+		@update_interval = 30.0
 		@ent_icon = NSImage.imageNamed_("ent32.png")
 		entAccounts()
 	end
@@ -115,7 +115,7 @@ class App < NSObject
 	def initMenu(container)
     @menu = NSMenu.alloc.init
     container.setMenu(@menu)
-		menu_item = @menu.addItemWithTitle_action_keyEquivalent("#{mailCount} message(s)" , nil, "")
+		menu_item = @menu.addItemWithTitle_action_keyEquivalent("#{@emailcount} message(s)" , nil, "")
     menu_item = @menu.addItemWithTitle_action_keyEquivalent("Check for new", "updateCount:", '')
 		menu_item = @menu.addItemWithTitle_action_keyEquivalent("Bring Entourage to front", "activateEnt:", '')
 		menu_item = @menu.addItemWithTitle_action_keyEquivalent("Compose new message", "newMessage:", '')
@@ -132,7 +132,7 @@ class App < NSObject
 	def updateMenu(container)
     container.setMenu(@menu)
 		@menu.removeItemAtIndex_(0)
-		menu_item = @menu.insertItemWithTitle_action_keyEquivalent_atIndex("#{mailCount} message(s)" , nil, "",0)
+		menu_item = @menu.insertItemWithTitle_action_keyEquivalent_atIndex("#{@emailcount} message(s)" , nil, "",0)
 	end
 
 	#----------------------------------------------------------------------------
