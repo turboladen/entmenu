@@ -7,6 +7,8 @@
 #
 
 require 'osx/cocoa'
+require 'rubygems'
+require 'growl'
 include OSX
 OSX.require_framework 'ScriptingBridge'
 
@@ -14,9 +16,12 @@ class App < NSObject
   @status_item
   @menu
   @entourage
+  @growl
+  @email_count
   @exch_accounts
   @imap_accounts
   @update_interval
+  @icon
 
   #----------------------------------------------------------------------------
   # Method:			initialize
@@ -25,7 +30,9 @@ class App < NSObject
   #----------------------------------------------------------------------------
   def initialize()
     @entourage = SBApplication.applicationWithBundleIdentifier_("com.microsoft.Entourage")
-    @update_interval = 300.0
+	@growl = SBApplication.applicationWithBundleIdentifier_("com.Growl.GrowlHelperApp")
+    @update_interval = 30.0
+    @ent_icon = NSImage.imageNamed_("ent32.png")
     exchAccounts()
     imapAccounts()
   end
@@ -40,8 +47,8 @@ class App < NSObject
     statusbar = NSStatusBar.systemStatusBar
     @status_item = statusbar.statusItemWithLength(NSVariableStatusItemLength)
 		
-    #image = NSImage.alloc.initWithContentsOfFile("Entourage_mac_2008_icon.png")
-    #status_item.setImage(image)
+    # Set status bar icon
+    @status_item.setImage(@ent_icon)
 		
     # Create menu with the mail count
     postFirstCount()
@@ -66,18 +73,20 @@ class App < NSObject
   #----------------------------------------------------------------------------
   def mailCount count_type=nil
     # Init the email count to start fresh every time this is called
-    email_count = 0
+    total_count = 0
 
     # Get the total count of emails in the Exchange inboxes
     exch_count = exchangeMailCount
-    email_count += exch_count
+    total_count += exch_count
     
     # Get the total count of emails in the IMAP inboxes
     imap_count = imapMailCount
-    email_count += imap_count
+    total_count += imap_count
 
-    puts email_count
-    return email_count.to_s
+    @email_count = total_count
+    puts total_count
+    growlNotify
+    return @email_count.to_s
   end
 
 
@@ -88,17 +97,17 @@ class App < NSObject
   #----------------------------------------------------------------------------
   def exchangeMailCount
     # Init the email count to start fresh every time this is called
-    email_count = 0
+    total_count = 0
 
     # Get the total count of emails in the Exchange inboxes
     exchange_inbox = Array.new
     count = 0
     @exch_accounts.each do |acct|
       exchange_inbox[count] = @exch_accounts[count].inboxFolder.get
-      email_count += exchange_inbox[count].unreadMessageCount
+      total_count += exchange_inbox[count].unreadMessageCount
     end
 
-    return email_count
+    return total_count
   end
 	
   #----------------------------------------------------------------------------
@@ -108,18 +117,18 @@ class App < NSObject
   #----------------------------------------------------------------------------
   def imapMailCount
     # Init the email count to start fresh every time this is called
-    email_count = 0
+    total_count = 0
 
     # Get the total count of emails in the IMAP inboxes
     imap_inbox = Array.new
     count = 0
     @imap_accounts.each do |acct|
       imap_inbox[count] = @imap_accounts[count].IMAPInboxFolder.get
-      email_count += imap_inbox[count].unreadMessageCount
+      total_count += imap_inbox[count].unreadMessageCount
       count += 1
     end
 
-    return email_count
+    return total_count
   end
 
   #----------------------------------------------------------------------------
@@ -230,6 +239,17 @@ class App < NSObject
       end tell"
     NSAppleScript.alloc.initWithSource_(thescript).executeAndReturnError_(nil)
     @entourage.activate
+  end
+
+  #----------------------------------------------------------------------------
+  # Method:			growlNotify
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------	
+  def growlNotify
+    g = Growl::Notifier.sharedInstance
+    g.register('EntMenu', ['New Mail'])
+    g.notify('New Mail', 'Unread Mail', "You have #{@email_count} unread messages", :icon => @ent_icon)
   end
 end
 
