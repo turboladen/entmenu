@@ -3,7 +3,7 @@
 #  Ent Menu
 #
 #  Created by Steve Loveless on 3/8/09.
-#  Copyright (c) 2009 Pelco. All rights reserved.
+#  Copyright (c) 2009 Steve Loveless. All rights reserved.
 #
 
 require 'osx/cocoa'
@@ -139,9 +139,14 @@ class App < NSObject
   # Purpose:		
   #----------------------------------------------------------------------------
   def updateCount(sender)
-    text = NSString.alloc.initWithString(mailCount())
-    @status_item.setTitle(text)
-    updateMenu(@status_item)
+    if @entourage.isRunning
+      text = NSString.alloc.initWithString(mailCount())
+      @status_item.setTitle(text)
+      updateMenu(@status_item)
+    else
+      puts "Entourage not running anymore.  Quitting."
+      NSApplication.sharedApplication.terminate(self)
+    end
   end
 
   #----------------------------------------------------------------------------
@@ -155,6 +160,7 @@ class App < NSObject
     menu_item = @menu.addItemWithTitle_action_keyEquivalent("Total: #{mailCount} message(s)" , nil, "")
     menu_item = @menu.addItemWithTitle_action_keyEquivalent("Exchange: #{exchangeMailCount} message(s)" , nil, "")
     menu_item = @menu.addItemWithTitle_action_keyEquivalent("IMAP: #{imapMailCount} message(s)" , nil, "")
+    menu_item = @menu.addItemWithTitle_action_keyEquivalent("--------------------" , nil, "")
     menu_item = @menu.addItemWithTitle_action_keyEquivalent("Check for new", "updateCount:", '')
     menu_item = @menu.addItemWithTitle_action_keyEquivalent("Bring Entourage to front", "activateEnt:", '')
     menu_item = @menu.addItemWithTitle_action_keyEquivalent("Compose new message", "newMessage:", '')
@@ -181,6 +187,15 @@ class App < NSObject
   #----------------------------------------------------------------------------
   def activateEnt(sender)
     @entourage.activate
+  end
+
+  #----------------------------------------------------------------------------
+  # Method:		    quitEnt	
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------
+  def quitEnt(sender)
+    @entourage.quit
   end
 
   #----------------------------------------------------------------------------
