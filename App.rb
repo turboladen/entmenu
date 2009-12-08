@@ -7,176 +7,215 @@
 #
 
 require 'osx/cocoa'
-require 'rubygems'
-require 'growl'
 include OSX
 OSX.require_framework 'ScriptingBridge'
 
 class App < NSObject
-	@status_item
-	@menu
-	@entourage
-	@ent_accts
-	@emailcount
-	@update_interval
-	@icon
-	
-	#----------------------------------------------------------------------------
-	# Method:			initialize
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------
-	def initialize()
-		@entourage = SBApplication.applicationWithBundleIdentifier_("com.microsoft.Entourage")
-		@growl = SBApplication.applicationWithBundleIdentifier_("com.Growl.GrowlHelperApp")
-		@update_interval = 300.0
-		@ent_icon = NSImage.imageNamed_("ent32.png")
-		entAccounts()
-	end
+  @status_item
+  @menu
+  @entourage
+  @exch_accounts
+  @imap_accounts
+  @update_interval
 
-	#----------------------------------------------------------------------------
-	# Method:			applicationDidFinishLaunching
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------
+  #----------------------------------------------------------------------------
+  # Method:			initialize
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------
+  def initialize()
+    @entourage = SBApplication.applicationWithBundleIdentifier_("com.microsoft.Entourage")
+    @update_interval = 300.0
+    exchAccounts()
+    imapAccounts()
+  end
+
+  #----------------------------------------------------------------------------
+  # Method:			applicationDidFinishLaunching
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------
   def applicationDidFinishLaunching(aNotification)
-		# Init status bar
+    # Init status bar
     statusbar = NSStatusBar.systemStatusBar
     @status_item = statusbar.statusItemWithLength(NSVariableStatusItemLength)
 		
-		# Set status bar icon
-		@status_item.setImage(@ent_icon)
+    #image = NSImage.alloc.initWithContentsOfFile("Entourage_mac_2008_icon.png")
+    #status_item.setImage(image)
 		
-		# Create menu with the mail count
-		postFirstCount()
-		
-		# Update the count at the set interval
-		@timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(@update_interval, self, :updateCount, nil, true)
+    # Create menu with the mail count
+    postFirstCount()
+    
+    # Update the count at the set interval
+    @timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(@update_interval, self, :updateCount, nil, true)
   end
 
-	#----------------------------------------------------------------------------
-	# Method:			applicationWillTerminate
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------  
+  #----------------------------------------------------------------------------
+  # Method:			applicationWillTerminate
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------  
   def applicationWillTerminate(aNotification)
     puts "Goodbye, cruel world!"
   end
 
-	#----------------------------------------------------------------------------
-	# Method:			mailCount
-	#
-	# Purpose:		Gets the number of emails from the first Exch. inbox
-	#----------------------------------------------------------------------------
-  def mailCount
-		#ent_accts.each do |acct|
-			#puts acct.name
-			#puts acct.emailAddress
-			# set inboxFolder to (inbox folder of Exchange account acctName)
-		#	inbox = acct.inboxFolder.get
-			# set totalCount to (unread message count of theAcct)
-		#	emailcount = inbox.unreadMessageCount
-			#puts count
-		#end
-		inbox = @ent_accts[0].inboxFolder.get
-		@emailcount = inbox.unreadMessageCount
-		puts @emailcount
-		growlNotify
-		return @emailcount.to_s
+  #----------------------------------------------------------------------------
+  # Method:			mailCount
+  #
+  # Purpose:		Gets the number of emails from the specified account type
+  #----------------------------------------------------------------------------
+  def mailCount count_type=nil
+    # Init the email count to start fresh every time this is called
+    email_count = 0
+
+    # Get the total count of emails in the Exchange inboxes
+    exch_count = exchangeMailCount
+    email_count += exch_count
+    
+    # Get the total count of emails in the IMAP inboxes
+    imap_count = imapMailCount
+    email_count += imap_count
+
+    puts email_count
+    return email_count.to_s
+  end
+
+
+  #----------------------------------------------------------------------------
+  # Method:			exchangeMailCount
+  #
+  # Purpose:		Gets the number of emails from each Exch. inbox
+  #----------------------------------------------------------------------------
+  def exchangeMailCount
+    # Init the email count to start fresh every time this is called
+    email_count = 0
+
+    # Get the total count of emails in the Exchange inboxes
+    exchange_inbox = Array.new
+    count = 0
+    @exch_accounts.each do |acct|
+      exchange_inbox[count] = @exch_accounts[count].inboxFolder.get
+      email_count += exchange_inbox[count].unreadMessageCount
+    end
+
+    return email_count
   end
 	
-	#----------------------------------------------------------------------------
-	# Method:			postFirstCount
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------
-	def postFirstCount
-	  text = NSString.alloc.initWithString(mailCount())
+  #----------------------------------------------------------------------------
+  # Method:			imapMailCount
+  #
+  # Purpose:		Gets the number of emails from the specified account type
+  #----------------------------------------------------------------------------
+  def imapMailCount
+    # Init the email count to start fresh every time this is called
+    email_count = 0
+
+    # Get the total count of emails in the IMAP inboxes
+    imap_inbox = Array.new
+    count = 0
+    @imap_accounts.each do |acct|
+      imap_inbox[count] = @imap_accounts[count].IMAPInboxFolder.get
+      email_count += imap_inbox[count].unreadMessageCount
+      count += 1
+    end
+
+    return email_count
+  end
+
+  #----------------------------------------------------------------------------
+  # Method:			postFirstCount
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------
+  def postFirstCount
+    text = NSString.alloc.initWithString(mailCount())
     @status_item.setTitle(text)
     initMenu(@status_item)
-	end
+  end
 
-	#----------------------------------------------------------------------------
-	# Method:			updateCount
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------
-	def updateCount(sender)
-	  text = NSString.alloc.initWithString(mailCount())
+  #----------------------------------------------------------------------------
+  # Method:			updateCount
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------
+  def updateCount(sender)
+    text = NSString.alloc.initWithString(mailCount())
     @status_item.setTitle(text)
     updateMenu(@status_item)
-	end
+  end
 
-	#----------------------------------------------------------------------------
-	# Method:			initMenu
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------
-	def initMenu(container)
+  #----------------------------------------------------------------------------
+  # Method:			initMenu
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------
+  def initMenu(container)
     @menu = NSMenu.alloc.init
     container.setMenu(@menu)
-		menu_item = @menu.addItemWithTitle_action_keyEquivalent("#{@emailcount} message(s)" , nil, "")
+    menu_item = @menu.addItemWithTitle_action_keyEquivalent("Total: #{mailCount} message(s)" , nil, "")
+    menu_item = @menu.addItemWithTitle_action_keyEquivalent("Exchange: #{exchangeMailCount} message(s)" , nil, "")
+    menu_item = @menu.addItemWithTitle_action_keyEquivalent("IMAP: #{imapMailCount} message(s)" , nil, "")
     menu_item = @menu.addItemWithTitle_action_keyEquivalent("Check for new", "updateCount:", '')
-		menu_item = @menu.addItemWithTitle_action_keyEquivalent("Bring Entourage to front", "activateEnt:", '')
-		menu_item = @menu.addItemWithTitle_action_keyEquivalent("Compose new message", "newMessage:", '')
+    menu_item = @menu.addItemWithTitle_action_keyEquivalent("Bring Entourage to front", "activateEnt:", '')
+    menu_item = @menu.addItemWithTitle_action_keyEquivalent("Compose new message", "newMessage:", '')
     menu_item = @menu.addItemWithTitle_action_keyEquivalent("Quit", "terminate:", '')
     menu_item.setKeyEquivalentModifierMask(NSCommandKeyMask)
     menu_item.setTarget(NSApp)
-	end
+  end
 
-	#----------------------------------------------------------------------------
-	# Method:			updateMenu
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------
-	def updateMenu(container)
+  #----------------------------------------------------------------------------
+  # Method:			updateMenu
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------
+  def updateMenu(container)
     container.setMenu(@menu)
-		@menu.removeItemAtIndex_(0)
-		menu_item = @menu.insertItemWithTitle_action_keyEquivalent_atIndex("#{@emailcount} message(s)" , nil, "",0)
-	end
+    @menu.removeItemAtIndex_(0)
+    menu_item = @menu.insertItemWithTitle_action_keyEquivalent_atIndex("Total: #{mailCount} message(s)" , nil, "",0)
+  end
 
-	#----------------------------------------------------------------------------
-	# Method:			activateEnt
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------
-	def activateEnt(sender)
-		@entourage.activate
-	end
+  #----------------------------------------------------------------------------
+  # Method:			activateEnt
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------
+  def activateEnt(sender)
+    @entourage.activate
+  end
 
-	#----------------------------------------------------------------------------
-	# Method:			entAccounts
-	#
-	# Purpose:		Gets list to Exch. accounts
-	#----------------------------------------------------------------------------
-	def entAccounts
-		@ent_accts = @entourage.ExchangeAccounts
-	end
+  #----------------------------------------------------------------------------
+  # Method:			exchAccounts
+  #
+  # Purpose:		Gets list to Exch. accounts
+  #----------------------------------------------------------------------------
+  def exchAccounts
+    @exch_accounts = @entourage.ExchangeAccounts
+    puts @exch_accounts
+  end
 	
-	#----------------------------------------------------------------------------
-	# Method:			newMessage
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------	
-	def newMessage(sender)
-		thescript = "tell application \"Microsoft Entourage\"
-	set theMessage to make new outgoing message
-	open theMessage
-end tell"
-		NSAppleScript.alloc.initWithSource_(thescript).executeAndReturnError_(nil)
-		@entourage.activate
-	end
+  #----------------------------------------------------------------------------
+  # Method:			imapAccounts
+  #
+  # Purpose:		Gets list to IMAP accounts
+  #----------------------------------------------------------------------------
+  def imapAccounts
+    @imap_accounts = @entourage.IMAPAccounts
+    puts @imap_accounts
+  end
 
-	#----------------------------------------------------------------------------
-	# Method:			growlNotify
-	#
-	# Purpose:		
-	#----------------------------------------------------------------------------	
-	def growlNotify
-		g = Growl::Notifier.sharedInstance
-		g.register('EntMenu', ['New Mail'])
-		g.notify('New Mail', 'Unread Mail', "You have #{@emailcount} unread messages", :icon => @ent_icon)
-	end
+  #----------------------------------------------------------------------------
+  # Method:			newMessage
+  #
+  # Purpose:		
+  #----------------------------------------------------------------------------	
+  def newMessage(sender)
+    thescript = "tell application \"Microsoft Entourage\"
+      set theMessage to make new outgoing message
+      open theMessage
+      end tell"
+    NSAppleScript.alloc.initWithSource_(thescript).executeAndReturnError_(nil)
+    @entourage.activate
+  end
 end
 
 
