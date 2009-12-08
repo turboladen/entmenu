@@ -31,7 +31,7 @@ class App < NSObject
   def initialize()
     @entourage = SBApplication.applicationWithBundleIdentifier_("com.microsoft.Entourage")
 	@growl = SBApplication.applicationWithBundleIdentifier_("com.Growl.GrowlHelperApp")
-    @update_interval = 30.0
+    @update_interval = 300.0
     @ent_icon = NSImage.imageNamed_("ent32.png")
     exchAccounts()
     imapAccounts()
