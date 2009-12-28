@@ -3,7 +3,7 @@
 //  Ent Menu
 //
 //  Created by Steve Loveless on 8/29/09.
-//  Copyright (c) 2009 Pelco. All rights reserved.
+//  Copyright (c) 2009 Steve Loveless. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>
