@@ -8,7 +8,7 @@
 
 require 'osx/cocoa'
 require 'rubygems'
-require 'growl'
+require 'growl_helpers'
 include OSX
 OSX.require_framework 'ScriptingBridge'
 
@@ -248,7 +248,7 @@ class App < NSObject
   #----------------------------------------------------------------------------	
   def growlNotify
     g = Growl::Notifier.sharedInstance
-    g.register('EntMenu', ['New Mail'])
+		g.register('EntMenu', ['New Mail'])
     g.notify('New Mail', 'Unread Mail', "You have #{@email_count} unread messages", :icon => @ent_icon)
   end
 end
